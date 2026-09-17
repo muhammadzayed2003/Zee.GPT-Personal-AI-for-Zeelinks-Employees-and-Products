@@ -1,10 +1,10 @@
 # Zee.GPT — Personal AI for ZeeLinks Employees & Products
 
-**Zee.GPT** is a private AI workspace built for **ZeeLinks employees and internal products**.
+**Zee.GPT** is a private, full-stack AI workspace built for **ZeeLinks employees and internal products**.
 
-It provides a ChatGPT-style interface powered by a **locally hosted LLM through Ollama**, with authenticated users, private conversation history, API key management, permission-based access, and streaming AI responses.
+It provides a ChatGPT-style interface powered by a **locally hosted LLM through Ollama**, with authenticated users, private conversation history, API key management, permission-based access, streaming AI responses, and a custom **Model Context Protocol (MCP)** server for structured company-data retrieval.
 
-The primary goal is to provide an internal AI platform while keeping infrastructure and LLM usage costs as low as possible.
+The primary goal is to provide a secure and extensible internal AI platform while keeping infrastructure and LLM usage costs as low as possible.
 
 ---
 
@@ -16,10 +16,11 @@ Instead of sending every request to paid cloud LLM APIs, the current system runs
 
 This provides:
 
-* No per-request OpenAI/Claude/Gemini API cost for local inference
+* No per-request OpenAI, Claude, or Gemini API cost for local inference
 * Full control over the AI backend
 * Private internal conversations
-* Lower operating cost for employees
+* Lower operating costs for employees
+* Controlled access to ZeeLinks company knowledge through MCP
 * Ability to expose AI capabilities to future ZeeLinks products through API keys
 * Flexible model switching without rebuilding the application
 
@@ -36,19 +37,21 @@ The architecture can later be upgraded to cloud or hybrid inference when higher 
 * Conversation context
 * Persistent chat history
 * New conversation creation
-* Conversation selection from sidebar
+* Conversation selection from the sidebar
 * Markdown-style response formatting
-* Roman Urdu, English and mixed-language support
+* Support for tables, charts, and flowcharts
+* Roman Urdu, English, and mixed-language support
 * Context-aware follow-up questions
 
 ### Authentication
 
 * User registration
-* Login/logout
+* Login and logout
 * Password reset
 * Email verification support
 * Profile management
 * Password management
+* Approval-based access for new accounts
 
 ### User Permissions
 
@@ -99,55 +102,78 @@ The model can be changed later without redesigning the complete application.
 
 ---
 
+## 🔌 Model Context Protocol (MCP)
+
+Zee.GPT includes a custom Laravel MCP server named **ZeeLinksServer**. It gives compatible AI clients controlled access to structured ZeeLinks company data through dedicated tools, a resource, and a reusable prompt.
+
+### MCP Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `GetEmployees` | Retrieves employee information |
+| `GetOwners` | Retrieves ZeeLinks ownership information |
+| `GetProducts` | Retrieves information about ZeeLinks products |
+| `GetLifeAtZeeLinks` | Retrieves workplace and company-culture information |
+| `GetContactLocation` | Retrieves company contact and location details |
+| `GetCompanyDescription` | Retrieves the ZeeLinks company description |
+
+### MCP Resource
+
+`CompanyKnowledge` exposes structured organizational context as an MCP resource.
+
+### MCP Prompt
+
+`ZeeLinksAssistant` provides reusable instructions for AI clients interacting with ZeeLinks data.
+
+### MCP Capabilities
+
+* Multi-tool company-data retrieval
+* Standardized tool calling
+* Structured organizational context
+* Reusable AI instructions
+* MCP Inspector compatibility for testing tools and sessions
+* Modular structure for adding future tools, prompts, and resources
+
+---
+
 ## 🏗️ Technology Stack
 
-| Layer           | Technology                 |
-| --------------- | -------------------------- |
-| Framework       | Laravel                    |
-| Backend         | PHP                        |
-| Frontend        | Blade + Alpine.js          |
-| Styling         | Tailwind CSS               |
-| Database        | Laravel-supported database |
-| Authentication  | Laravel Breeze             |
-| AI Runtime      | Ollama                     |
-| Current LLM     | Qwen3 8B                   |
-| API             | Laravel HTTP/API layer     |
-| Build Tool      | Vite                       |
-| Version Control | Git + GitHub               |
+| Layer | Technology |
+| --- | --- |
+| Framework | Laravel |
+| Backend | PHP |
+| Frontend | Blade + Alpine.js |
+| Styling | Tailwind CSS |
+| Database | SQLite / Laravel-supported database |
+| Authentication | Laravel Breeze |
+| AI Runtime | Ollama |
+| Current LLM | Qwen3 8B |
+| AI Integration | Laravel HTTP layer |
+| Agent Protocol | Model Context Protocol (MCP) |
+| Build Tool | Vite |
+| Version Control | Git + GitHub |
 
 ---
 
 ## 🔄 Architecture
 
 ```text
-User
-  │
-  ▼
+Authenticated User
+       │
+       ▼
 Zee.GPT Web Interface
-  │
-  ▼
+       │
+       ▼
 Laravel Application
-  │
-  ├── Authentication
-  ├── Permissions
-  ├── Conversations
-  ├── Messages
-  └── API Keys
-  │
-  ▼
-LLM Controller
-  │
-  ▼
-Ollama
-  │
-  ▼
-Qwen3 8B
-  │
-  ▼
-Streaming AI Response
-  │
-  ▼
-User
+       ├── Authentication and account approval
+       ├── Permissions
+       ├── Conversations and messages
+       ├── API keys
+       ├── LLM Controller ──► Ollama ──► Qwen3 8B
+       └── ZeeLinksServer (MCP)
+              ├── 6 company-data tools
+              ├── CompanyKnowledge resource
+              └── ZeeLinksAssistant prompt
 ```
 
 ---
@@ -156,15 +182,15 @@ User
 
 One of the main design goals of Zee.GPT is reducing recurring AI costs.
 
-### Current approach
+### Current Approach
 
 ```text
 Employee
-   ↓
+   ↕
 Zee.GPT
-   ↓
+   ↕
 Local Ollama
-   ↓
+   ↕
 Qwen3 8B
 ```
 
@@ -173,12 +199,12 @@ Because inference is performed locally, the system does not require a paid cloud
 This is particularly useful for:
 
 * Internal employee usage
-* Development/testing
+* Development and testing
 * High-frequency AI interactions
 * Prototyping new ZeeLinks products
 * Internal automation
 
-### Future scaling
+### Future Scaling
 
 When the number of users grows, the architecture can evolve into a hybrid setup:
 
@@ -212,7 +238,7 @@ but does **not** track:
 .env
 ```
 
-API keys, database passwords, application secrets and other credentials should never be committed to Git.
+API keys, database passwords, application secrets, and other credentials should never be committed to Git.
 
 ---
 
@@ -224,39 +250,31 @@ Install the following before running Zee.GPT:
 
 * PHP
 * Composer
-* Node.js + npm
+* Node.js and npm
 * Git
 * Ollama
 * A supported database
 
----
-
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/muhammadzayed2003/Zee.GPT-Personal-AI-for-Zeelinks-Employees-and-Products.git
 cd Zee.GPT-Personal-AI-for-Zeelinks-Employees-and-Products
 ```
 
----
-
-### 2. Install PHP dependencies
+### 2. Install PHP Dependencies
 
 ```bash
 composer install
 ```
 
----
-
-### 3. Install frontend dependencies
+### 3. Install Frontend Dependencies
 
 ```bash
 npm install
 ```
 
----
-
-### 4. Create environment file
+### 4. Create the Environment File
 
 ```bash
 cp .env.example .env
@@ -268,33 +286,23 @@ On Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
----
-
-### 5. Generate application key
+### 5. Generate the Application Key
 
 ```bash
 php artisan key:generate
 ```
 
----
+### 6. Configure the Database
 
-### 6. Configure the database
-
-Update the database configuration inside `.env`.
-
-Then run:
+Update the database configuration inside `.env`, then run:
 
 ```bash
 php artisan migrate
 ```
 
----
+### 7. Install and Run Ollama
 
-### 7. Install and run Ollama
-
-Install Ollama on the machine that will run the AI backend.
-
-Then download the configured model:
+Install Ollama on the machine that will run the AI backend, then download the configured model:
 
 ```bash
 ollama pull qwen3:8b
@@ -312,15 +320,11 @@ The application currently communicates with Ollama through:
 http://127.0.0.1:11434
 ```
 
----
-
 ### 8. Start Laravel
 
 ```bash
 php artisan serve
 ```
-
----
 
 ### 9. Start Vite
 
@@ -339,8 +343,6 @@ The application can then be accessed through the Laravel development URL.
 Zee.GPT includes an API key management layer for users who have API access enabled.
 
 The long-term purpose is to allow other ZeeLinks applications to consume centralized AI capabilities.
-
-Example future architecture:
 
 ```text
 ZeeLinks Product
@@ -364,21 +366,17 @@ This means individual ZeeLinks products do not necessarily need to maintain thei
 
 Zee.GPT is designed for controlled internal usage.
 
-Conceptually:
-
 ```text
 Admin
- │
+ ├── Review new accounts
  ├── Manage permissions
  ├── Control AI Workspace access
  └── Control API access
 
 Employee
- │
  └── AI Workspace
 
 Authorized Product
- │
  └── Zee.GPT API
 ```
 
@@ -394,13 +392,30 @@ app/
 │   ├── Controllers/
 │   ├── Middleware/
 │   └── Requests/
-│
-├── Models/
-│   ├── User.php
-│   ├── Conversation.php
-│   ├── Message.php
-│   └── ApiKey.php
-│
+├── Mcp/
+│   ├── Prompts/
+│   │   └── ZeeLinksAssistant.php
+│   ├── Resources/
+│   │   └── CompanyKnowledge.php
+│   ├── Servers/
+│   │   └── ZeeLinksServer.php
+│   └── Tools/
+│       ├── GetCompanyDescription.php
+│       ├── GetContactLocation.php
+│       ├── GetEmployees.php
+│       ├── GetLifeAtZeeLinks.php
+│       ├── GetOwners.php
+│       └── GetProducts.php
+└── Models/
+    ├── User.php
+    ├── Conversation.php
+    ├── Message.php
+    ├── ApiKey.php
+    └── CompanyData.php
+
+config/
+└── zeegpt.php
+
 database/
 ├── migrations/
 ├── factories/
@@ -414,42 +429,20 @@ resources/
 routes/
 ├── web.php
 ├── api.php
+├── ai.php
 └── auth.php
-
-public/
-bootstrap/
-config/
-storage/
-tests/
 ```
 
 ---
 
 ## 🧠 Current AI Configuration
 
-Current model:
-
-```text
-Qwen3 8B
-```
-
-AI runtime:
-
-```text
-Ollama
-```
-
-Streaming:
-
-```text
-Enabled
-```
-
-Thinking mode:
-
-```text
-Disabled
-```
+| Setting | Current Configuration |
+| --- | --- |
+| Model | Qwen3 8B |
+| Runtime | Ollama |
+| Streaming | Enabled |
+| Thinking mode | Disabled |
 
 The application is structured so the underlying model can be replaced later if a different local or cloud model becomes more suitable.
 
@@ -459,21 +452,19 @@ The application is structured so the underlying model can be replaced later if a
 
 Potential future improvements include:
 
-* Hybrid local + cloud LLM routing
+* Hybrid local and cloud LLM routing
 * Advanced role-based access control
 * Admin analytics dashboard
-* Token/usage monitoring
-* API usage limits
-* Rate limiting
+* Token and usage monitoring
+* API usage limits and rate limiting
 * Model selection
 * Multiple AI providers
 * RAG knowledge base
-* Company knowledge integration
-* File/document processing
+* File and document processing
 * Voice AI
 * Mobile application integration
-* AI agents
-* MCP-based tool integration
+* Advanced AI agents
+* Additional MCP tools and external MCP clients
 * Product-specific AI endpoints
 * Centralized AI billing and usage management
 
@@ -503,4 +494,4 @@ Unless explicitly authorized, copying, redistribution, commercial use, deploymen
 
 Private AI infrastructure for **ZeeLinks employees and products**.
 
-Built with Laravel, Ollama and modern web technologies.
+Built with Laravel, Ollama, MCP, and modern web technologies.
